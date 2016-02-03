@@ -16,11 +16,10 @@ elseif($_POST[dir]!=""){ $dir=$_POST[dir];}
 else{	$dir="./";}
 
 $style_head="
-<HTML><!-- BOOM網站寶貝 Ver 2.0 繁體版（PHP） |製作者：刀鋒戰士 //-->
+<HTML>
 <HEAD>
-<TITLE>→BOOM網站寶貝 v2.0 繁體版 {title}←</TITLE>
-<META content='text/html; charset=big5' http-equiv=Content-Type>
-<META http-equiv=keyword content=BOOM,BOOM星際聯盟,BOOM超級聯盟,BOOM網絡帝國,電子競技,網頁設計,網站建設開發,webpage,website>
+<TITLE>→BOOM{title}←</TITLE>
+<META content='text/html; charset=UTF-8' http-equiv=Content-Type>
 
 <style type='text/css'>
   A:link    {color:000000; text-decoration: underline}
