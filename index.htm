@@ -3,43 +3,135 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Extract GeoGebra data-param-id</title>
+    <title>LaTeX to DOCX Converter</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        textarea {
+            width: 100%;
+            height: 100px;
+            margin-bottom: 10px;
+            font-family: monospace;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        #status {
+            margin-top: 10px;
+            color: #333;
+        }
+        #downloadLink {
+            display: none;
+            margin-top: 10px;
+        }
+    </style>
 </head>
 <body>
-    <h1>GeoGebra data-param-id Extractor</h1>
-    <p>URL: <span id="url">https://www.geogebra.org/m/zxdavtjx</span></p>
-    <p>Extracted data-param-id: <span id="dataParamId">Click the button to extract</span></p>
-    <button onclick="extractDataParamId()">Extract data-param-id</button>
+
+
+           <button onclick="findGgbAppletDiv()">Find ggbApplet Div IDs</button>
+            <p id="result">Result will appear here.</p>
+            <script>
+                function findGgbAppletDiv() {
+                    const parentDoc = window.parent.document;
+                    const divs = parentDoc.getElementsByTagName("div");
+                    let result = "Found div IDs starting with \"ggbApplet\":<br>";
+
+                    for (let div of divs) {
+                        if (div.id.startsWith("ggbApplet")) {
+                            result += div.id + "<br>";
+                        }
+                    }
+
+                    if (result === "Found div IDs starting with \"ggbApplet\":<br>") {
+                        result = "No div IDs starting with \"ggbApplet\" found.";
+                    }
+
+                    document.getElementById("result").innerHTML = result;
+                }
+            </script>
+
+
+           <button onclick="aa()">Find ggbApplet Div IDs</button>
+            <p id="result1">Result will appear here.</p>
+            <script>
+                function aa() {
+                    
+
+var a = ggbApplet.getValueString("textcopy1");
+var b = ggbApplet.getValueString("textcopy2");
+
+var result0 = a + "\n" + "\\\\答案： " + b + "\\\\\\\\\n"
+ggbApplet.copyTextToClipboard(result0);
+
+
+                    document.getElementById("result1").innerHTML = result0;
+                }
+            </script>
+
+
+
+
+
+
+
+    <h1>LaTeX to DOCX Converter</h1>
+    <textarea id="latexInput" placeholder="Enter your LaTeX code here..."></textarea>
+    <button onclick="convertToDocx()">Convert to DOCX</button>
+    <div id="status"></div>
+    <a id="downloadLink" href="#" download="output.docx">Download DOCX</a>
 
     <script>
-        // Simulated HTML content from the GeoGebra page (replace with actual fetched content)
-        const pageContent = `
-            <html>
-            <body>
-                <div class="applet_container" data-param-id="ggbApplet53580537" ...>
-                    <!-- Rest of the page content -->
-                </div>
-            </body>
-            </html>
-        `;
+        const PANDOC_SERVER_URL = 'https://pandoc.org/cgi-bin/pandoc-server.cgi';
+        const statusElement = document.getElementById('status');
+        const downloadLink = document.getElementById('downloadLink');
 
-        function extractDataParamId() {
-alert("");
-            const url = document.getElementById('url').textContent;
-            const idElement = document.getElementById('dataParamId');
+        async function convertToDocx() {
+            const latexContent = document.getElementById('latexInput').value;
+            statusElement.textContent = 'Converting...';
+            downloadLink.style.display = 'none';
 
-            // Create a temporary DOM element to parse the HTML content
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(pageContent, 'text/html');
+            try {
+                const response = await fetch(PANDOC_SERVER_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        text: latexContent,
+                        from: 'latex',
+                        to: 'docx'
+                    })
+                });
 
-            // Find the element with data-param-id attribute
-            const elementWithDataParamId = doc.querySelector('[data-param-id]');
-            const dataParamId = elementWithDataParamId ? elementWithDataParamId.getAttribute('data-param-id') : null;
+                if (!response.ok) {
+                    throw new Error(`Server error: ${response.status}`);
+                }
 
-            if (dataParamId) {
-                idElement.textContent = dataParamId;
-            } else {
-                idElement.textContent = 'data-param-id not found';
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                
+                downloadLink.href = url;
+                downloadLink.style.display = 'block';
+                statusElement.textContent = 'Conversion successful! Click to download.';
+                
+                // Clean up URL after some time
+                setTimeout(() => window.URL.revokeObjectURL(url), 60000);
+                
+            } catch (error) {
+                statusElement.textContent = `Error: ${error.message}`;
+                console.error('Conversion error:', error);
             }
         }
     </script>
