@@ -40,45 +40,17 @@
 <body>
 
 
-           <button onclick="findGgbAppletDiv()">Find ggbApplet Div IDs</button>
-            <p id="result">Result will appear here.</p>
-            <script>
-                function findGgbAppletDiv() {
-                    const parentDoc = window.parent.document;
-                    const divs = parentDoc.getElementsByTagName("div");
-                    let result = "Found div IDs starting with \"ggbApplet\":<br>";
+    <p id="clickable" class="clickable-text">Click this text!</p>
 
-                    for (let div of divs) {
-                        if (div.id.startsWith("ggbApplet")) {
-                            result += div.id + "<br>";
-                        }
-                    }
+    <script>
+        const clickableText = document.getElementById('clickable');
+        clickableText.addEventListener('click', handleClick);
 
-                    if (result === "Found div IDs starting with \"ggbApplet\":<br>") {
-                        result = "No div IDs starting with \"ggbApplet\" found.";
-                    }
-
-                    document.getElementById("result").innerHTML = result;
-                }
-            </script>
-
-
-           <button onclick="aa()">Find ggbApplet Div IDs</button>
-            <p id="result1">Result will appear here.</p>
-            <script>
-                function aa() {
-                    
-
-var a = ggbApplet.getValueString("textcopy1");
-var b = ggbApplet.getValueString("textcopy2");
-
-var result0 = a + "\n" + "\\\\答案： " + b + "\\\\\\\\\n"
-ggbApplet.copyTextToClipboard(result0);
-
-
-                    document.getElementById("result1").innerHTML = result0;
-                }
-            </script>
+        function handleClick() {
+ggbApplet53580537.setVisible("txtmode",false);
+            alert('You clicked the text!');
+        }
+    </script>
 
 
 
