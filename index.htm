@@ -1,45 +1,6 @@
-<!DOCTYPE html>
-<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LaTeX to DOCX Converter</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-        textarea {
-            width: 100%;
-            height: 100px;
-            margin-bottom: 10px;
-            font-family: monospace;
-        }
-        button {
-            padding: 10px 20px;
-            background-color: #007bff;
-            color: white;
-            border: none;
-            cursor: pointer;
-        }
-        button:hover {
-            background-color: #0056b3;
-        }
-        #status {
-            margin-top: 10px;
-            color: #333;
-        }
-        #downloadLink {
-            display: none;
-            margin-top: 10px;
-        }
-    </style>
 </head>
 <body>
-
-
     <p id="clickable" class="clickable-text">Click this text!</p>
 
     <script>
@@ -47,64 +8,8 @@
         clickableText.addEventListener('click', handleClick);
 
         function handleClick() {
-ggbApplet53580537.setVisible("txtmode",false);
+            console.log('Text was clicked!'); // Debug log to confirm click
             alert('You clicked the text!');
-        }
-    </script>
-
-
-
-
-
-
-
-    <h1>LaTeX to DOCX Converter</h1>
-    <textarea id="latexInput" placeholder="Enter your LaTeX code here..."></textarea>
-    <button onclick="convertToDocx()">Convert to DOCX</button>
-    <div id="status"></div>
-    <a id="downloadLink" href="#" download="output.docx">Download DOCX</a>
-
-    <script>
-        const PANDOC_SERVER_URL = 'https://pandoc.org/cgi-bin/pandoc-server.cgi';
-        const statusElement = document.getElementById('status');
-        const downloadLink = document.getElementById('downloadLink');
-
-        async function convertToDocx() {
-            const latexContent = document.getElementById('latexInput').value;
-            statusElement.textContent = 'Converting...';
-            downloadLink.style.display = 'none';
-
-            try {
-                const response = await fetch(PANDOC_SERVER_URL, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        text: latexContent,
-                        from: 'latex',
-                        to: 'docx'
-                    })
-                });
-
-                if (!response.ok) {
-                    throw new Error(`Server error: ${response.status}`);
-                }
-
-                const blob = await response.blob();
-                const url = window.URL.createObjectURL(blob);
-                
-                downloadLink.href = url;
-                downloadLink.style.display = 'block';
-                statusElement.textContent = 'Conversion successful! Click to download.';
-                
-                // Clean up URL after some time
-                setTimeout(() => window.URL.revokeObjectURL(url), 60000);
-                
-            } catch (error) {
-                statusElement.textContent = `Error: ${error.message}`;
-                console.error('Conversion error:', error);
-            }
         }
     </script>
 </body>
