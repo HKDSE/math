@@ -629,6 +629,7 @@
             arScene.add(arCamera);
 
             arRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            arRenderer.setClearColor(new THREE.Color('lightgrey'), 0); // Explicitly ensure canvas is transparent
             arRenderer.setSize(window.innerWidth, window.innerHeight);
             arRenderer.domElement.style.position = 'absolute';
             arRenderer.domElement.style.top = '0px';
@@ -645,7 +646,7 @@
             // Handle window resize for AR camera stream
             window.addEventListener('resize', onResizeAR);
             function onResizeAR() {
-                if(arActive) {
+                if(arActive && arToolkitSource) {
                     arToolkitSource.onResizeElement();
                     arToolkitSource.copyElementSizeTo(arRenderer.domElement);
                     if(arToolkitContext && arToolkitContext.arController !== null) {
@@ -657,7 +658,8 @@
             // 3. Setup ARToolkit Context (Tracking Engine)
             // Configured for matrix/barcode tracking as requested
             arToolkitContext = new THREEx.ArToolkitContext({
-                cameraParametersUrl: 'https://cdn.jsdelivr.net/npm/@ar-js-org/ar.js@3.3.2/data/data/camera_para.dat',
+                // FIX: Swap to reliable githack URL to prevent 404 network failure during initialization
+                cameraParametersUrl: 'https://raw.githack.com/AR-js-org/AR.js/master/data/data/camera_para.dat',
                 detectionMode: 'mono_and_matrix',
                 matrixCodeType: '3x3'
             });
@@ -697,12 +699,14 @@
                 if (!arActive) return;
                 arAnimationId = requestAnimationFrame(animateAR);
 
-                if (arToolkitSource.ready !== false) {
+                if (arToolkitSource && arToolkitSource.ready !== false) {
                     arToolkitContext.update(arToolkitSource.domElement);
                 }
                 
                 // NO AUTO-ROTATION per constraints
-                arRenderer.render(arScene, arCamera);
+                if (arRenderer && arScene && arCamera) {
+                    arRenderer.render(arScene, arCamera);
+                }
             }
             animateAR();
         }
