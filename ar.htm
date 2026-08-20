@@ -295,7 +295,7 @@
         <div class="header-container interactive">
             <h1>🪐 Solar System Size Comparator</h1>
             <div class="header-controls">
-                <button id="btn-toggle-info" class="btn-toggle-info" onclick="toggleInfo()">Hide Info</button>
+                <button id="btn-toggle-info" class="btn-toggle-info" onclick="toggleInfo()">Show Info</button>
                 <div class="mode-toggle">
                     <button id="btn-non-ar" class="active" onclick="setMode('non-ar')">Desktop 3D Mode</button>
                     <button id="btn-ar" onclick="setMode('ar')">AR Marker Mode</button>
@@ -324,14 +324,14 @@
                     </div>
                 </div>
                 
-                <div id="non-ar-cards" class="cards-row" style="margin-top: 20px;">
+                <div id="non-ar-cards" class="cards-row" style="margin-top: 20px; display: none;">
                     <!-- Planet Cards injected via JS -->
                 </div>
             </div>
             
             <!-- AR Mode Specific View -->
             <div id="ui-ar" style="display: none;">
-                <div id="ar-cards" class="cards-row">
+                <div id="ar-cards" class="cards-row" style="display: none;">
                     <!-- AR tracked cards injected via JS -->
                 </div>
             </div>
@@ -454,7 +454,7 @@
     <script>
         // System State
         let appMode = 'non-ar';
-        let infoVisible = true;
+        let infoVisible = false; // Default setting: hide information panel
         const NON_AR_BASE_SCALE = 0.2; // 0.2 meters base radius for Earth (Desktop view)
         const AR_BASE_SCALE = 0.02;    // 0.02 meters (2cm) base radius for Earth (AR desk view)
 
@@ -504,6 +504,7 @@
                 
                 const pivot = document.createElement('a-entity');
                 pivot.classList.add('ar-planet'); // Class used by gesture tracker
+                pivot.setAttribute('position', '0 0.5 0'); // Positions 3D planet on top of the physical marker
                 
                 const autoRotate = document.createElement('a-entity');
                 autoRotate.classList.add('auto-rotate');
@@ -590,8 +591,10 @@
             const pA = document.getElementById('select-planet-a').value;
             const pB = document.getElementById('select-planet-b').value;
             
-            document.getElementById('non-ar-cards').innerHTML = 
+            const cardsContainer = document.getElementById('non-ar-cards');
+            cardsContainer.innerHTML = 
                 createCardHTML(pA, 'card-a') + createCardHTML(pB, 'card-b');
+            cardsContainer.style.display = infoVisible ? 'flex' : 'none';
                 
             updatePlanetMesh('a', pA);
             updatePlanetMesh('b', pB);
@@ -703,6 +706,7 @@
             document.querySelectorAll('.ar-planet').forEach(el => {
                 el.setAttribute('scale', '1 1 1');
                 el.setAttribute('rotation', '0 0 0');
+                el.setAttribute('position', '0 0.5 0'); // Ensure elevation on gesture reset
             });
         }
 
