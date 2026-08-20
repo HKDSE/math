@@ -456,7 +456,7 @@
         let appMode = 'non-ar';
         let infoVisible = false; // Default setting: hide information panel
         const NON_AR_BASE_SCALE = 0.2; // 0.2 meters base radius for Earth (Desktop view)
-        const AR_BASE_SCALE = 0.02;    // 0.02 meters (2cm) base radius for Earth (AR desk view)
+        const AR_BASE_SCALE = 0.04;    // 0.04 meters (4cm) base radius for Earth (AR desk view) - 200% larger
 
         // Comprehensive Astronomical Data Base (Relative sizes are normalized to Earth = 1.0)
         const planetData = {
@@ -504,7 +504,7 @@
                 
                 const pivot = document.createElement('a-entity');
                 pivot.classList.add('ar-planet'); // Class used by gesture tracker
-                pivot.setAttribute('position', '0 -3 0'); // Positions 3D planet exactly on the physical marker
+                pivot.setAttribute('position', '0 0 0'); // Anchors 3D planet directly to the physical marker
                 
                 const autoRotate = document.createElement('a-entity');
                 autoRotate.classList.add('auto-rotate');
@@ -706,7 +706,7 @@
             document.querySelectorAll('.ar-planet').forEach(el => {
                 el.setAttribute('scale', '1 1 1');
                 el.setAttribute('rotation', '0 0 0');
-                el.setAttribute('position', '0 0 0'); // Center on the marker upon gesture reset
+                el.setAttribute('position', '0 0 0'); // Ensure elevation on gesture reset is anchored
             });
         }
 
