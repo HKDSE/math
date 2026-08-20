@@ -2,829 +2,769 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Solar System AR & 3D Comparator</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+    <title>Solar System Relative Scale Comparison</title>
     
-    <!-- A-Frame (3D WebXR Framework) -->
-    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
-    <!-- AR.js (Marker tracking framework optimized for A-Frame) -->
-    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+    <!-- Three.js (Core 3D Engine) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- AR.js (Marker Tracking extending Three.js) -->
+    <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.3.2/three.js/build/ar.js"></script>
 
     <style>
+        /* Modern, clean UI styling */
         :root {
-            --bg-color: #f8fafc;
-            --panel-bg: rgba(255, 255, 255, 0.92);
+            --primary-bg: #f8fafc;
+            --panel-bg: #ffffff;
             --text-main: #1e293b;
-            --text-muted: #64748b;
-            --accent-blue: #2563eb;
-            --accent-glow: rgba(37, 99, 235, 0.25);
-            --card-border: #e2e8f0;
+            --accent-color: #3b82f6;
+            --border-color: #cbd5e1;
+            --space-bg: #0f172a;
         }
 
         body {
             margin: 0;
-            overflow: hidden; /* Prevents scrolling while using 3D gestures */
-            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-            background-color: var(--bg-color);
+            padding: 0;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--primary-bg);
+            color: var(--text-main);
+            overflow-x: hidden;
+            transition: background-color 0.3s ease;
         }
 
-        /* --- UI Overlay Layer --- */
-        #ui-layer {
-            position: absolute;
+        /* Prevent scrolling in AR mode */
+        body.ar-active {
+            overflow: hidden;
+            background-color: transparent;
+        }
+
+        /* Fixed Top Navigation / Header */
+        header {
+            position: fixed;
             top: 0;
             left: 0;
-            width: 100vw;
-            height: 100vh;
-            pointer-events: none; /* Allows touches to pass through to the 3D canvas */
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            z-index: 1000;
-        }
-
-        .interactive {
-            pointer-events: auto; /* Re-enables interaction for buttons and panels */
-        }
-
-        /* Header Navigation */
-        .header-container {
-            background: rgba(255, 255, 255, 0.85);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border-bottom: 1px solid var(--card-border);
-            padding: 12px 24px;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(8px);
+            padding: 15px 30px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
             display: flex;
             justify-content: space-between;
             align-items: center;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            z-index: 1000;
+            box-sizing: border-box;
         }
 
-        .header-container h1 {
+        h1 {
             margin: 0;
             font-size: 1.5rem;
-            color: var(--accent-blue);
-            font-weight: 800;
-            letter-spacing: -0.5px;
-        }
-
-        /* Header Controls Area */
-        .header-controls {
-            display: flex;
-            gap: 16px;
-            align-items: center;
-        }
-
-        .btn-toggle-info {
-            padding: 10px 18px;
-            border: 2px solid var(--accent-blue);
-            background: #ffffff;
-            border-radius: 8px;
-            cursor: pointer;
             font-weight: 700;
-            font-size: 0.95rem;
-            color: var(--accent-blue);
-            transition: all 0.2s ease;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            color: #0f172a;
         }
 
-        .btn-toggle-info:hover {
-            background: #f0f4f8;
+        .header-subtitle {
+            font-size: 0.9rem;
+            color: #64748b;
+            margin-top: 4px;
         }
 
-        /* Mode Toggle Buttons */
-        .mode-toggle {
-            display: flex;
-            gap: 10px;
-        }
-
-        .mode-toggle button {
-            padding: 10px 18px;
-            border: 1px solid #cbd5e1;
-            background: #ffffff;
+        /* Prominent Mode Toggle Button */
+        #mode-toggle {
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            padding: 12px 24px;
             border-radius: 8px;
-            cursor: pointer;
-            font-weight: 700;
-            font-size: 0.95rem;
-            color: var(--text-muted);
-            transition: all 0.2s ease;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-        }
-
-        .mode-toggle button:hover {
-            background: #f1f5f9;
-        }
-
-        .mode-toggle button.active {
-            background: var(--accent-blue);
-            color: #ffffff;
-            border-color: var(--accent-blue);
-            box-shadow: 0 4px 14px var(--accent-glow);
-        }
-
-        /* Interaction Hints */
-        .hint-container {
-            display: flex;
-            justify-content: center;
-            margin-top: 16px;
-            pointer-events: none;
-        }
-
-        .hint-pill {
-            background: rgba(15, 23, 42, 0.75);
-            color: #ffffff;
-            padding: 8px 18px;
-            border-radius: 20px;
-            font-size: 0.85rem;
-            backdrop-filter: blur(6px);
-            -webkit-backdrop-filter: blur(6px);
+            font-size: 1rem;
             font-weight: 600;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-            letter-spacing: 0.5px;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+            transition: transform 0.2s, background-color 0.2s;
         }
 
-        /* Bottom Controls Area */
-        .bottom-area {
-            margin-top: auto;
-            padding: 24px;
+        #mode-toggle:hover {
+            background-color: #2563eb;
+            transform: translateY(-2px);
+        }
+
+        /* --- Mode A: Non-AR Container --- */
+        #non-ar-mode {
+            padding-top: 100px; /* Space for fixed header */
+            min-height: 100vh;
             display: flex;
             flex-direction: column;
-            gap: 16px;
-            background: linear-gradient(to top, rgba(0,0,0,0.15) 0%, transparent 100%);
-        }
-
-        /* Non-AR Planet Selection */
-        .selection-panel {
-            display: flex;
-            justify-content: center;
-            gap: 24px;
-        }
-
-        .selector-group {
-            background: var(--panel-bg);
-            padding: 12px 24px;
-            border-radius: 12px;
-            box-shadow: 0 8px 20px rgba(0,0,0,0.1);
-            display: flex;
             align-items: center;
-            gap: 12px;
-            border: 1px solid var(--card-border);
-            backdrop-filter: blur(10px);
+            box-sizing: border-box;
+            padding-bottom: 40px;
         }
 
-        .selector-group label {
-            font-weight: 700;
-            color: var(--text-main);
-            font-size: 0.95rem;
+        .split-screen-container {
+            display: flex;
+            width: 100%;
+            max-width: 1200px;
+            gap: 30px;
+            padding: 0 20px;
+            margin-top: 20px;
         }
 
-        .selector-group select {
-            padding: 8px 16px;
+        .viewer-panel {
+            flex: 1;
+            background: var(--panel-bg);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
+            display: flex;
+            flex-direction: column;
+            border: 1px solid var(--border-color);
+        }
+
+        .control-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        select {
+            padding: 10px 16px;
             border-radius: 8px;
-            border: 1px solid #cbd5e1;
+            border: 1px solid var(--border-color);
+            font-size: 1.1rem;
             font-weight: 600;
-            font-size: 0.95rem;
-            color: var(--accent-blue);
             background-color: #f8fafc;
+            color: var(--text-main);
             cursor: pointer;
+            width: 60%;
             outline: none;
         }
 
-        /* Dynamic Information Cards */
-        .cards-row {
-            display: flex;
-            justify-content: center;
-            gap: 24px;
-            flex-wrap: wrap;
+        select:focus {
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
         }
 
-        .info-card {
-            background: var(--panel-bg);
-            border-radius: 16px;
-            border: 1px solid var(--card-border);
-            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
-            padding: 24px;
-            flex: 1;
-            min-width: 300px;
-            max-width: 450px;
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            transition: transform 0.3s ease;
-        }
-
-        .info-card h2 {
-            margin: 0 0 16px 0;
-            color: var(--accent-blue);
-            border-bottom: 2px solid var(--card-border);
-            padding-bottom: 8px;
-            font-size: 1.4rem;
-        }
-
-        .data-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px 16px;
+        .metric-badge {
+            background: #e2e8f0;
+            padding: 6px 12px;
+            border-radius: 20px;
             font-size: 0.9rem;
+            font-weight: 600;
+            color: #475569;
         }
 
-        .data-item { display: flex; flex-direction: column; }
-        
-        .data-label { 
-            font-size: 0.75rem; 
-            color: var(--text-muted); 
-            text-transform: uppercase; 
-            font-weight: 700; 
-            margin-bottom: 3px;
-            letter-spacing: 0.5px;
-        }
-        
-        .data-value { 
-            font-weight: 600; 
-            color: var(--text-main); 
-        }
-
-        /* Marker Help Modal */
-        #marker-modal {
-            display: none;
-            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-            background: rgba(15, 23, 42, 0.85);
-            z-index: 9999;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-            box-sizing: border-box;
-            backdrop-filter: blur(5px);
-        }
-
-        .modal-content {
-            background: #ffffff;
-            padding: 30px;
-            border-radius: 16px;
-            max-width: 450px;
+        /* The 3D Canvas Area */
+        .canvas-container {
             width: 100%;
-            max-height: 85vh;
-            overflow-y: auto;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            aspect-ratio: 1 / 1;
+            background: var(--space-bg);
+            border-radius: 12px;
+            overflow: hidden;
+            position: relative;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
+            cursor: grab;
+            touch-action: none; /* Prevents scrolling on mobile while dragging */
         }
 
-        .btn-primary {
-            width: 100%; padding: 14px; background: var(--accent-blue); color: white;
-            border: none; border-radius: 8px; font-weight: bold; cursor: pointer;
-            margin-top: 20px; font-size: 1rem; transition: background 0.2s;
+        .canvas-container:active {
+            cursor: grabbing;
         }
-        .btn-primary:hover { background: #1d4ed8; }
 
-        /* Responsive Design Rules */
-        @media (max-width: 850px) {
-            .cards-row { flex-direction: column; align-items: center; gap: 16px; }
-            .info-card { width: 100%; max-width: 100%; }
-            .selection-panel { flex-direction: column; gap: 12px; }
-            .header-container { flex-direction: column; gap: 12px; text-align: center; }
-            .header-controls { flex-direction: column; gap: 12px; width: 100%; }
-            .mode-toggle { width: 100%; justify-content: center; flex-wrap: wrap; }
-            .btn-toggle-info { width: 100%; }
-            .hint-pill { font-size: 0.75rem; }
+        .zoom-container {
+            width: 100%;
+            max-width: 1200px;
+            padding: 0 20px;
+            margin-top: 10px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            box-sizing: border-box;
+        }
+        
+        .zoom-label {
+            font-weight: 600;
+            color: var(--text-main);
+        }
+        
+        #zoom-slider {
+            flex: 1;
+            cursor: pointer;
+        }
+
+        .info-overlay {
+            position: absolute;
+            bottom: 15px;
+            left: 15px;
+            right: 15px;
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(4px);
+            padding: 12px;
+            border-radius: 8px;
+            color: white;
+            text-align: center;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .info-overlay h3 {
+            margin: 0 0 5px 0;
+            font-size: 1.2rem;
+        }
+
+        .info-overlay p {
+            margin: 0;
+            font-size: 0.9rem;
+            color: #94a3b8;
+        }
+
+        /* --- Mode B: AR Container --- */
+        #ar-mode {
+            display: none; /* Hidden by default */
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10;
+        }
+
+        /* Instruction overlay for AR mode */
+        #ar-instructions {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 15px 25px;
+            border-radius: 30px;
+            font-weight: 500;
+            z-index: 1001;
+            backdrop-filter: blur(4px);
+            text-align: center;
+            pointer-events: none; /* Let clicks pass through to video */
+        }
+
+        /* AR.js video scaling fix */
+        video {
+            object-fit: cover;
+        }
+
+        @media (max-width: 800px) {
+            .split-screen-container {
+                flex-direction: column;
+            }
+            header {
+                flex-direction: column;
+                padding: 15px;
+                text-align: center;
+                gap: 15px;
+            }
+            #non-ar-mode {
+                padding-top: 140px;
+            }
         }
     </style>
 </head>
 <body>
 
-    <!-- Front-End UI Layer -->
-    <div id="ui-layer">
-        
-        <!-- Header -->
-        <div class="header-container interactive">
-            <h1>🪐 Solar System Size Comparator</h1>
-            <div class="header-controls">
-                <button id="btn-toggle-info" class="btn-toggle-info" onclick="toggleInfo()">Show Info</button>
-                <div class="mode-toggle">
-                    <button id="btn-non-ar" class="active" onclick="setMode('non-ar')">Desktop 3D Mode</button>
-                    <button id="btn-ar" onclick="setMode('ar')">AR Marker Mode</button>
+    <header>
+        <div>
+            <h1>Solar System Scale</h1>
+            <div class="header-subtitle">True Relative Size Comparison</div>
+        </div>
+        <button id="mode-toggle">Enter AR Mode</button>
+    </header>
+
+    <!-- Mode A: Non-AR View -->
+    <div id="non-ar-mode">
+        <div class="zoom-container">
+            <span class="zoom-label">Magnify:</span>
+            <input type="range" id="zoom-slider" min="0.1" max="5" step="0.05" value="1">
+        </div>
+        <div class="split-screen-container">
+            <!-- Left Viewer -->
+            <div class="viewer-panel">
+                <div class="control-row">
+                    <select id="select-left"></select>
+                    <div class="metric-badge" id="metric-left">Loading...</div>
                 </div>
-            </div>
-        </div>
-
-        <!-- Gesture Hints -->
-        <div class="hint-container">
-            <span class="hint-pill">👆 Drag/Swipe to Rotate • 🤏 Pinch/Scroll to Zoom</span>
-        </div>
-
-        <!-- Controls & Information Panels -->
-        <div class="bottom-area interactive">
-            
-            <!-- Non-AR Mode Specific View -->
-            <div id="ui-non-ar">
-                <div class="selection-panel">
-                    <div class="selector-group">
-                        <label for="select-planet-a">Planet A</label>
-                        <select id="select-planet-a" onchange="updateNonARUI()"></select>
-                    </div>
-                    <div class="selector-group">
-                        <label for="select-planet-b">Planet B</label>
-                        <select id="select-planet-b" onchange="updateNonARUI()"></select>
+                <div class="canvas-container" id="canvas-container-left">
+                    <div class="info-overlay">
+                        <h3 id="name-left">Planet</h3>
+                        <p id="desc-left">Radius: -</p>
                     </div>
                 </div>
-                
-                <div id="non-ar-cards" class="cards-row" style="margin-top: 20px; display: none;">
-                    <!-- Planet Cards injected via JS -->
+            </div>
+
+            <!-- Right Viewer -->
+            <div class="viewer-panel">
+                <div class="control-row">
+                    <select id="select-right"></select>
+                    <div class="metric-badge" id="metric-right">Loading...</div>
+                </div>
+                <div class="canvas-container" id="canvas-container-right">
+                    <div class="info-overlay">
+                        <h3 id="name-right">Planet</h3>
+                        <p id="desc-right">Radius: -</p>
+                    </div>
                 </div>
             </div>
-            
-            <!-- AR Mode Specific View -->
-            <div id="ui-ar" style="display: none;">
-                <div id="ar-cards" class="cards-row" style="display: none;">
-                    <!-- AR tracked cards injected via JS -->
-                </div>
-            </div>
-            
         </div>
     </div>
 
-    <!-- Marker Help Guide Modal -->
-    <div id="marker-modal">
-        <div class="modal-content">
-            <h2 style="margin-top: 0; color: var(--accent-blue);">AR Marker Guide</h2>
-            <p style="color: var(--text-main); font-weight: 500;">This application utilizes <strong>AR.js 3x3 Matrix Barcodes</strong> to track planets in real space.</p>
-            <p style="color: var(--text-muted); font-size: 0.95rem;">You can print these markers or display them on a secondary device (like a phone or tablet).</p>
-            
-            <div style="background: var(--bg-color); padding: 15px; border-radius: 8px; margin: 15px 0; max-height: 50vh; overflow-y: auto;">
-                <ul style="line-height: 1.8; margin: 0; padding-left: 0; font-weight: 600; color: var(--text-main); list-style-type: none;">
-                    <li style="display: flex; align-items: center; gap: 15px; margin-bottom: 10px;">
-                        <img src="https://raw.githubusercontent.com/AR-js-org/AR.js/master/data/data/3x3/0.png" alt="Barcode 0" style="width: 50px; height: 50px; border: 1px solid #ccc;">
-                        <span><strong>Barcode 0</strong> - Mercury</span>
-                    </li>
-                    <li style="display: flex; align-items: center; gap: 15px; margin-bottom: 10px;">
-                        <img src="https://raw.githubusercontent.com/AR-js-org/AR.js/master/data/data/3x3/1.png" alt="Barcode 1" style="width: 50px; height: 50px; border: 1px solid #ccc;">
-                        <span><strong>Barcode 1</strong> - Venus</span>
-                    </li>
-                    <li style="display: flex; align-items: center; gap: 15px; margin-bottom: 10px;">
-                        <img src="https://raw.githubusercontent.com/AR-js-org/AR.js/master/data/data/3x3/2.png" alt="Barcode 2" style="width: 50px; height: 50px; border: 1px solid #ccc;">
-                        <span><strong>Barcode 2</strong> - Earth</span>
-                    </li>
-                    <li style="display: flex; align-items: center; gap: 15px; margin-bottom: 10px;">
-                        <img src="https://raw.githubusercontent.com/AR-js-org/AR.js/master/data/data/3x3/3.png" alt="Barcode 3" style="width: 50px; height: 50px; border: 1px solid #ccc;">
-                        <span><strong>Barcode 3</strong> - Mars</span>
-                    </li>
-                    <li style="display: flex; align-items: center; gap: 15px; margin-bottom: 10px;">
-                        <img src="https://raw.githubusercontent.com/AR-js-org/AR.js/master/data/data/3x3/4.png" alt="Barcode 4" style="width: 50px; height: 50px; border: 1px solid #ccc;">
-                        <span><strong>Barcode 4</strong> - Jupiter</span>
-                    </li>
-                    <li style="display: flex; align-items: center; gap: 15px; margin-bottom: 10px;">
-                        <img src="https://raw.githubusercontent.com/AR-js-org/AR.js/master/data/data/3x3/5.png" alt="Barcode 5" style="width: 50px; height: 50px; border: 1px solid #ccc;">
-                        <span><strong>Barcode 5</strong> - Saturn</span>
-                    </li>
-                    <li style="display: flex; align-items: center; gap: 15px; margin-bottom: 10px;">
-                        <img src="https://raw.githubusercontent.com/AR-js-org/AR.js/master/data/data/3x3/6.png" alt="Barcode 6" style="width: 50px; height: 50px; border: 1px solid #ccc;">
-                        <span><strong>Barcode 6</strong> - Uranus</span>
-                    </li>
-                    <li style="display: flex; align-items: center; gap: 15px; margin-bottom: 10px;">
-                        <img src="https://raw.githubusercontent.com/AR-js-org/AR.js/master/data/data/3x3/7.png" alt="Barcode 7" style="width: 50px; height: 50px; border: 1px solid #ccc;">
-                        <span><strong>Barcode 7</strong> - Neptune</span>
-                    </li>
-                </ul>
-            </div>
-            
-            <p style="font-size: 0.85rem; color: #64748b;">🔍 Tip: You can scan these directly from this screen with another device.</p>
-            <button class="btn-primary" onclick="document.getElementById('marker-modal').style.display = 'none'">Close Guide</button>
+    <!-- Mode B: AR View -->
+    <div id="ar-mode">
+        <div id="ar-instructions">
+            Point camera at Barcode Markers (0-7) to see planets. Bring two together to compare!
         </div>
+        <!-- AR.js elements will be injected here via scripts -->
     </div>
-
-    <!-- A-Frame WebXR Scene -->
-    <a-scene 
-        embedded 
-        arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix; matrixCodeType: 3x3;" 
-        renderer="antialias: true; alpha: true; precision: mediump;"
-        vr-mode-ui="enabled: false">
-        
-        <!-- Asset Management System -->
-        <a-assets timeout="10000">
-            <img id="tex-mercury" src="https://cdn.jsdelivr.net/gh/jeromeetienne/threex.planets@master/images/mercurymap.jpg" crossorigin="anonymous">
-            <img id="tex-venus" src="https://cdn.jsdelivr.net/gh/jeromeetienne/threex.planets@master/images/venusmap.jpg" crossorigin="anonymous">
-            <img id="tex-earth" src="https://cdn.jsdelivr.net/gh/jeromeetienne/threex.planets@master/images/earthmap1k.jpg" crossorigin="anonymous">
-            <img id="tex-mars" src="https://cdn.jsdelivr.net/gh/jeromeetienne/threex.planets@master/images/marsmap1k.jpg" crossorigin="anonymous">
-            <img id="tex-jupiter" src="https://cdn.jsdelivr.net/gh/jeromeetienne/threex.planets@master/images/jupitermap.jpg" crossorigin="anonymous">
-            <img id="tex-saturn" src="https://cdn.jsdelivr.net/gh/jeromeetienne/threex.planets@master/images/saturnmap.jpg" crossorigin="anonymous">
-            <img id="tex-uranus" src="https://cdn.jsdelivr.net/gh/jeromeetienne/threex.planets@master/images/uranusmap.jpg" crossorigin="anonymous">
-            <img id="tex-neptune" src="https://cdn.jsdelivr.net/gh/jeromeetienne/threex.planets@master/images/neptunemap.jpg" crossorigin="anonymous">
-        </a-assets>
-
-        <!-- Static Camera for dual-purpose viewing -->
-        <a-entity id="main-camera" camera position="0 1.5 0" look-controls="enabled: false" wasd-controls="enabled: false"></a-entity>
-
-        <!-- Non-AR Mode Environment Wrapper -->
-        <a-entity id="non-ar-group">
-            
-            <!-- Dark Space-like Sky Background (Visually obscures the webcam feed) -->
-            <a-sky id="non-ar-sky" color="#020617"></a-sky>
-            
-            <!-- Global Scale and Position Wrapper for pinching/zooming -->
-            <a-entity id="planets-wrapper" position="0 1.5 -9">
-                
-                <!-- Planet A Architecture -->
-                <a-entity id="pivot-a" position="-3.5 0 0">
-                    <a-entity class="auto-rotate">
-                        <a-entity rotation="-23.5 0 0"> <!-- Axial Tilt -->
-                            <a-sphere id="mesh-a" segments-width="64" segments-height="64"></a-sphere>
-                            <a-ring id="ring-a" side="double" opacity="0.85"></a-ring>
-                        </a-entity>
-                    </a-entity>
-                </a-entity>
-
-                <!-- Planet B Architecture -->
-                <a-entity id="pivot-b" position="3.5 0 0">
-                    <a-entity class="auto-rotate">
-                        <a-entity rotation="-23.5 0 0">
-                            <a-sphere id="mesh-b" segments-width="64" segments-height="64"></a-sphere>
-                            <a-ring id="ring-b" side="double" opacity="0.85"></a-ring>
-                        </a-entity>
-                    </a-entity>
-                </a-entity>
-
-            </a-entity>
-        </a-entity>
-        
-        <!-- Global Cinematic Lighting (Applies to both AR and Desktop modes) -->
-        <a-light type="ambient" color="#ffffff" intensity="0.8"></a-light>
-        <a-light type="directional" position="-2 3 1" color="#ffffff" intensity="1.2"></a-light>
-        <a-light type="directional" position="2 -1 -1" color="#4a5568" intensity="0.4"></a-light>
-
-        <!-- AR Markers will be injected dynamically by JavaScript here -->
-
-    </a-scene>
 
     <script>
-        // System State
-        let appMode = 'non-ar';
-        let infoVisible = false; // Default setting: hide information panel
-        const NON_AR_BASE_SCALE = 0.2; // 0.2 meters base radius for Earth (Desktop view)
-        const AR_BASE_SCALE = 0.04;    // 0.04 meters (4cm) base radius for Earth (AR desk view) - 200% larger
+        // --- Core Planetary Data (True Relative Radii based on Earth = 1) ---
+        // Earth radius ~ 6,371 km
+        const planetData = [
+            { id: 0, name: "Mercury", radius: 0.383, texUrl: "https://cdn.jsdelivr.net/gh/jeromeetienne/threex.planets@master/images/mercurymap.jpg", hasRing: false },
+            { id: 1, name: "Venus", radius: 0.950, texUrl: "https://cdn.jsdelivr.net/gh/jeromeetienne/threex.planets@master/images/venusmap.jpg", hasRing: false },
+            { id: 2, name: "Earth", radius: 1.000, texUrl: "https://cdn.jsdelivr.net/gh/jeromeetienne/threex.planets@master/images/earthmap1k.jpg", hasRing: false },
+            { id: 3, name: "Mars", radius: 0.532, texUrl: "https://cdn.jsdelivr.net/gh/jeromeetienne/threex.planets@master/images/marsmap1k.jpg", hasRing: false },
+            { id: 4, name: "Jupiter", radius: 10.97, texUrl: "https://cdn.jsdelivr.net/gh/jeromeetienne/threex.planets@master/images/jupitermap.jpg", hasRing: false },
+            { id: 5, name: "Saturn", radius: 9.14, texUrl: "https://cdn.jsdelivr.net/gh/jeromeetienne/threex.planets@master/images/saturnmap.jpg", hasRing: true, ringType: 'saturn' },
+            { id: 6, name: "Uranus", radius: 3.98, texUrl: "https://cdn.jsdelivr.net/gh/jeromeetienne/threex.planets@master/images/uranusmap.jpg", hasRing: true, ringType: 'uranus' },
+            { id: 7, name: "Neptune", radius: 3.86, texUrl: "https://cdn.jsdelivr.net/gh/jeromeetienne/threex.planets@master/images/neptunemap.jpg", hasRing: false }
+        ];
 
-        // Comprehensive Astronomical Data Base (Relative sizes are normalized to Earth = 1.0)
-        const planetData = {
-            mercury: { name: "Mercury", radius: 0.38, hasRing: false, ringInner: 0, ringOuter: 0, ringColor: "", atm: "None (Exosphere)", temp: "167°C (Avg)", water: "Ice in polar craters", mass: "3.30 × 10²³ kg", gravity: "3.7 m/s²", dist: "57.9M km", rev: "88 days", rot: "59 days", life: "Inhospitable" },
-            venus: { name: "Venus", radius: 0.95, hasRing: false, ringInner: 0, ringOuter: 0, ringColor: "", atm: "Thick CO2, Sulfuric Acid", temp: "464°C", water: "None", mass: "4.87 × 10²⁴ kg", gravity: "8.87 m/s²", dist: "108.2M km", rev: "225 days", rot: "243 days (Retro)", life: "Inhospitable" },
-            earth: { name: "Earth", radius: 1.0, hasRing: false, ringInner: 0, ringOuter: 0, ringColor: "", atm: "Nitrogen, Oxygen", temp: "15°C", water: "Abundant Liquid Surface Water", mass: "5.97 × 10²⁴ kg", gravity: "9.8 m/s²", dist: "149.6M km", rev: "365.25 days", rot: "24 hours", life: "Flourishing" },
-            mars: { name: "Mars", radius: 0.53, hasRing: false, ringInner: 0, ringOuter: 0, ringColor: "", atm: "Thin CO2", temp: "-65°C", water: "Ice at poles / underground", mass: "6.42 × 10²³ kg", gravity: "3.71 m/s²", dist: "227.9M km", rev: "687 days", rot: "24.6 hours", life: "Possible past microbial" },
-            jupiter: { name: "Jupiter", radius: 11.2, hasRing: false, ringInner: 0, ringOuter: 0, ringColor: "", atm: "Hydrogen, Helium", temp: "-110°C", water: "Trace vapor in clouds", mass: "1.90 × 10²⁷ kg", gravity: "24.79 m/s²", dist: "778.5M km", rev: "11.9 years", rot: "9.9 hours", life: "Inhospitable (Moons vary)" },
-            saturn: { name: "Saturn", radius: 9.45, hasRing: true, ringInner: 12, ringOuter: 22, ringColor: "#e2c99b", atm: "Hydrogen, Helium", temp: "-140°C", water: "Ice in rings / moons", mass: "5.68 × 10²⁶ kg", gravity: "10.44 m/s²", dist: "1.43B km", rev: "29.5 years", rot: "10.7 hours", life: "Inhospitable (Moons vary)" },
-            uranus: { name: "Uranus", radius: 4.0, hasRing: false, ringInner: 0, ringOuter: 0, ringColor: "", atm: "Hydrogen, Helium, Methane", temp: "-195°C", water: "Ice mantle", mass: "8.68 × 10²⁵ kg", gravity: "8.69 m/s²", dist: "2.87B km", rev: "84 years", rot: "17.2 hours", life: "Inhospitable" },
-            neptune: { name: "Neptune", radius: 3.88, hasRing: false, ringInner: 0, ringOuter: 0, ringColor: "", atm: "Hydrogen, Helium, Methane", temp: "-200°C", water: "Ice mantle", mass: "1.02 × 10²⁶ kg", gravity: "11.15 m/s²", dist: "4.5B km", rev: "165 years", rot: "16.1 hours", life: "Inhospitable" }
-        };
-
-        const activeARMarkers = new Set();
-
-        // Bootstrapping the Application
-        document.addEventListener("DOMContentLoaded", () => {
-            populateDropdowns();
-            generateARMarkers();
-            setMode('non-ar'); // Initialize in Desktop 3D Mode
+        // Global Texture Loader (Cross-Origin enabled)
+        const textureLoader = new THREE.TextureLoader();
+        textureLoader.crossOrigin = "anonymous";
+        
+        // Cache textures so we don't reload them multiple times
+        const textureCache = {};
+        planetData.forEach(p => {
+            textureCache[p.name] = textureLoader.load(p.texUrl);
         });
 
-        function generateARMarkers() {
-            const scene = document.querySelector('a-scene');
-            const planetKeys = Object.keys(planetData);
+        // --- Shared Function: Create Planet Mesh ---
+        // Generates the 3D object based on data, used by both AR and Non-AR engines
+        function createPlanetGroup(data, scaleMultiplier = 1) {
+            const group = new THREE.Group();
             
-            // Programmatically construct Barcode markers 0 through 7
-            planetKeys.forEach((key, index) => {
-                const data = planetData[key];
-                
-                const marker = document.createElement('a-marker');
-                marker.setAttribute('type', 'barcode');
-                marker.setAttribute('value', index);
-                marker.dataset.planet = key;
-                
-                // Track Marker Events for UI Overlay
-                marker.addEventListener('markerFound', () => {
-                    activeARMarkers.add(key);
-                    renderARCards();
-                });
-                marker.addEventListener('markerLost', () => {
-                    activeARMarkers.delete(key);
-                    renderARCards();
-                });
-                
-                const pivot = document.createElement('a-entity');
-                pivot.classList.add('ar-planet'); // Class used by gesture tracker
-                pivot.setAttribute('position', '0 0 0'); // Anchors 3D planet directly to the physical marker
-                
-                const autoRotate = document.createElement('a-entity');
-                autoRotate.classList.add('auto-rotate');
-                
-                const tilt = document.createElement('a-entity');
-                tilt.setAttribute('rotation', '-23.5 0 0'); // Generic axial tilt for aesthetics
-                
-                const sphere = document.createElement('a-sphere');
-                sphere.setAttribute('radius', data.radius * AR_BASE_SCALE);
-                sphere.setAttribute('src', `#tex-${key}`);
-                sphere.setAttribute('segments-width', '48');
-                sphere.setAttribute('segments-height', '48');
-                tilt.appendChild(sphere);
-                
-                if (data.hasRing) {
-                    const ring = document.createElement('a-ring');
-                    ring.setAttribute('radius-inner', data.ringInner * AR_BASE_SCALE);
-                    ring.setAttribute('radius-outer', data.ringOuter * AR_BASE_SCALE);
-                    ring.setAttribute('color', data.ringColor);
-                    ring.setAttribute('side', 'double');
-                    ring.setAttribute('opacity', '0.85');
-                    tilt.appendChild(ring);
-                }
-                
-                autoRotate.appendChild(tilt);
-                pivot.appendChild(autoRotate);
-                marker.appendChild(pivot);
-                scene.appendChild(marker);
+            // Base Sphere
+            const geometry = new THREE.SphereGeometry(data.radius * scaleMultiplier, 64, 64);
+            const material = new THREE.MeshPhongMaterial({
+                map: textureCache[data.name],
+                shininess: 10
             });
-        }
+            const sphere = new THREE.Mesh(geometry, material);
+            group.add(sphere);
 
-        function populateDropdowns() {
-            const selA = document.getElementById('select-planet-a');
-            const selB = document.getElementById('select-planet-b');
-            
-            for (let key in planetData) {
-                let optA = document.createElement('option');
-                optA.value = key; optA.textContent = planetData[key].name;
-                if(key === 'earth') optA.selected = true;
-                selA.appendChild(optA);
-                
-                let optB = document.createElement('option');
-                optB.value = key; optB.textContent = planetData[key].name;
-                if(key === 'jupiter') optB.selected = true;
-                selB.appendChild(optB);
-            }
-        }
-
-        function setMode(mode) {
-            appMode = mode;
-            resetGestures(); // Ensure zoom levels reset between contexts
-            
-            const nonArSky = document.getElementById('non-ar-sky');
-            const nonArGroup = document.getElementById('non-ar-group');
-            const uiNonAr = document.getElementById('ui-non-ar');
-            const uiAr = document.getElementById('ui-ar');
-            
-            if (mode === 'non-ar') {
-                nonArSky.setAttribute('visible', 'true');
-                nonArGroup.setAttribute('visible', 'true');
-                
-                uiNonAr.style.display = 'block';
-                uiAr.style.display = 'none';
-                
-                document.getElementById('btn-non-ar').classList.add('active');
-                document.getElementById('btn-ar').classList.remove('active');
-                
-                updateNonARUI();
-            } else {
-                nonArSky.setAttribute('visible', 'false');
-                nonArGroup.setAttribute('visible', 'false');
-                
-                uiNonAr.style.display = 'none';
-                uiAr.style.display = 'block';
-                
-                document.getElementById('btn-ar').classList.add('active');
-                document.getElementById('btn-non-ar').classList.remove('active');
-                
-                renderARCards();
-            }
-        }
-
-        function updateNonARUI() {
-            const pA = document.getElementById('select-planet-a').value;
-            const pB = document.getElementById('select-planet-b').value;
-            
-            const cardsContainer = document.getElementById('non-ar-cards');
-            cardsContainer.innerHTML = 
-                createCardHTML(pA, 'card-a') + createCardHTML(pB, 'card-b');
-            cardsContainer.style.display = infoVisible ? 'flex' : 'none';
-                
-            updatePlanetMesh('a', pA);
-            updatePlanetMesh('b', pB);
-        }
-
-        function updatePlanetMesh(side, planetKey) {
-            const data = planetData[planetKey];
-            const mesh = document.getElementById(`mesh-${side}`);
-            mesh.setAttribute('radius', data.radius * NON_AR_BASE_SCALE);
-            mesh.setAttribute('src', `#tex-${planetKey}`);
-            
-            const ring = document.getElementById(`ring-${side}`);
+            // Ring Generation
             if (data.hasRing) {
-                ring.setAttribute('visible', 'true');
-                ring.setAttribute('radius-inner', data.ringInner * NON_AR_BASE_SCALE);
-                ring.setAttribute('radius-outer', data.ringOuter * NON_AR_BASE_SCALE);
-                ring.setAttribute('color', data.ringColor);
-            } else {
-                ring.setAttribute('visible', 'false');
-            }
-        }
-
-        function toggleInfo() {
-            infoVisible = !infoVisible;
-            const btn = document.getElementById('btn-toggle-info');
-            btn.textContent = infoVisible ? "Show Info" : "Hide Info";
-            
-            // Toggle visibility for both AR and non-AR card containers
-            document.getElementById('non-ar-cards').style.display = infoVisible ? 'flex' : 'none';
-            document.getElementById('ar-cards').style.display = infoVisible ? 'flex' : 'none';
-        }
-
-        function renderARCards() {
-            if(appMode !== 'ar') return;
-            const container = document.getElementById('ar-cards');
-            container.innerHTML = '';
-            
-            let count = 0;
-            // Display up to 2 cards simultaneously in AR to preserve screen visibility
-            for (let planetKey of activeARMarkers) {
-                if(count >= 2) break;
-                container.innerHTML += createCardHTML(planetKey, `ar-card-${planetKey}`);
-                count++;
+                if (data.ringType === 'saturn') {
+                    // Stylized procedural flat 3D ring geometry aligned with its equator
+                    const ringGeo = new THREE.RingGeometry(data.radius * scaleMultiplier * 1.3, data.radius * scaleMultiplier * 2.3, 64);
+                    const ringMat = new THREE.MeshPhongMaterial({
+                        color: 0xc2a67e, // Saturn ring dusty color
+                        side: THREE.DoubleSide,
+                        transparent: true,
+                        opacity: 0.85
+                    });
+                    const ring = new THREE.Mesh(ringGeo, ringMat);
+                    // Align ring with equator (lay flat) and apply a slight tilt so it's visible to camera
+                    ring.rotation.x = Math.PI / 2;
+                    group.add(ring);
+                } else if (data.ringType === 'uranus') {
+                    // Subtle ring system
+                    const ringGeo = new THREE.RingGeometry(data.radius * scaleMultiplier * 1.5, data.radius * scaleMultiplier * 1.6, 64);
+                    const ringMat = new THREE.MeshPhongMaterial({
+                        color: 0x99badd, // Faint ice blue
+                        side: THREE.DoubleSide,
+                        transparent: true,
+                        opacity: 0.4
+                    });
+                    const ring = new THREE.Mesh(ringGeo, ringMat);
+                    // Uranus has an extreme tilt, representing it here
+                    ring.rotation.x = Math.PI / 2;
+                    ring.rotation.y = Math.PI / 4; 
+                    group.add(ring);
+                }
             }
             
-            if (activeARMarkers.size === 0) {
-                container.innerHTML = `
-                    <div class="info-card" style="text-align: center; margin: 0 auto; min-width: 280px; max-width: 320px;">
-                        <p style="color: var(--text-main); font-weight: 600; margin: 0 0 15px 0;">Looking for Planets...</p>
-                        <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0;">Point your camera at AR.js Barcode Markers (Values 0-7).</p>
-                        <button onclick="document.getElementById('marker-modal').style.display = 'flex'" class="btn-primary" style="margin-top: 10px; padding: 10px;">View Marker Guide</button>
-                    </div>
-                `;
-            }
+            // To ensure they look good statically, rotate them to show a good face
+            sphere.rotation.y = Math.PI / -2; 
+
+            return group;
         }
 
-        function createCardHTML(planetKey, cardId) {
-            const p = planetData[planetKey];
-            if(!p) return '';
-            return `
-                <div class="info-card" id="${cardId}">
-                    <h2>${p.name}</h2>
-                    <div class="data-grid">
-                        <div class="data-item"><span class="data-label">Atmosphere</span><span class="data-value">${p.atm}</span></div>
-                        <div class="data-item"><span class="data-label">Avg Temp</span><span class="data-value">${p.temp}</span></div>
-                        <div class="data-item"><span class="data-label">Water</span><span class="data-value">${p.water}</span></div>
-                        <div class="data-item"><span class="data-label">Gravity</span><span class="data-value">${p.gravity}</span></div>
-                        <div class="data-item"><span class="data-label">Mass</span><span class="data-value">${p.mass}</span></div>
-                        <div class="data-item"><span class="data-label">Dist from Sun</span><span class="data-value">${p.dist}</span></div>
-                        <div class="data-item"><span class="data-label">Year (Orbit)</span><span class="data-value">${p.rev}</span></div>
-                        <div class="data-item"><span class="data-label">Day (Rotate)</span><span class="data-value">${p.rot}</span></div>
-                    </div>
-                    <div class="data-item" style="margin-top: 16px; border-top: 1px solid var(--card-border); padding-top: 12px;">
-                        <span class="data-label">Scientific Assessment</span>
-                        <span class="data-value" style="color: var(--accent-blue);">${p.life}</span>
-                    </div>
-                </div>
-            `;
-        }
+        // --- Mode A: Non-AR Engine Setup ---
+        
+        class PlanetViewer {
+            constructor(containerId, dataPrefix) {
+                this.container = document.getElementById(containerId);
+                this.dataPrefix = dataPrefix; // 'left' or 'right'
+                this.currentMesh = null;
+                this.currentZoom = 1;
 
-        // Gesture Engine State
-        let currentScale = 1.0;
-        let isDragging = false;
-        let previousCursor = null;
-        let initialPinchDistance = null;
-        let initialScaleAtPinch = 1.0;
-
-        function updatePlanetSeparation() {
-            // Dynamically decrease planet X positions as currentScale increases
-            const baseDist = 3.5;
-            const adjustedX = baseDist / Math.pow(currentScale, 0.45); // Adjusted ratio to prevent overlap at extreme zoom
-            
-            const pivotA = document.getElementById('pivot-a');
-            const pivotB = document.getElementById('pivot-b');
-            if (pivotA && pivotB) {
-                const posA = pivotA.getAttribute('position');
-                const posB = pivotB.getAttribute('position');
-                pivotA.setAttribute('position', `${-adjustedX} ${posA.y} ${posA.z}`);
-                pivotB.setAttribute('position', `${adjustedX} ${posB.y} ${posB.z}`);
-            }
-        }
-
-        function resetGestures() {
-            currentScale = 1.0;
-            document.getElementById('planets-wrapper').setAttribute('scale', '1 1 1');
-            updatePlanetSeparation();
-            document.getElementById('pivot-a').setAttribute('rotation', '0 0 0');
-            document.getElementById('pivot-b').setAttribute('rotation', '0 0 0');
-            document.querySelectorAll('.ar-planet').forEach(el => {
-                el.setAttribute('scale', '1 1 1');
-                el.setAttribute('rotation', '0 0 0');
-                el.setAttribute('position', '0 0 0'); // Ensure elevation on gesture reset is anchored
-            });
-        }
-
-        function getTouchDistance(touch1, touch2) {
-            const dx = touch1.pageX - touch2.pageX;
-            const dy = touch1.pageY - touch2.pageY;
-            return Math.sqrt(dx*dx + dy*dy);
-        }
-
-        function applyRotation(el, dx, dy) {
-            let rot = el.getAttribute('rotation') || {x:0, y:0, z:0};
-            // Map X movement to Y-axis rotation (Yaw), Y movement to X-axis rotation (Pitch)
-            el.setAttribute('rotation', { x: rot.x + dy, y: rot.y + dx, z: rot.z });
-        }
-
-        // --- Touch Event Listeners ---
-        document.addEventListener('touchstart', (e) => {
-            if(e.target.closest('.interactive') || e.target.closest('#marker-modal')) return;
-            
-            if(e.touches.length === 1) {
-                isDragging = true;
-                previousCursor = { x: e.touches[0].pageX, y: e.touches[0].pageY };
-            } else if (e.touches.length === 2) {
-                isDragging = false;
-                initialPinchDistance = getTouchDistance(e.touches[0], e.touches[1]);
-                initialScaleAtPinch = currentScale;
-            }
-        }, {passive: false});
-
-        document.addEventListener('touchmove', (e) => {
-            if(e.target.closest('.interactive') || e.target.closest('#marker-modal')) return;
-            e.preventDefault(); // Lock screen scrolling
-            
-            const rotationSpeed = 0.4;
-            
-            if(e.touches.length === 1 && isDragging) {
-                let touch = e.touches[0];
-                let dx = touch.pageX - previousCursor.x;
-                let dy = touch.pageY - previousCursor.y;
-                previousCursor = { x: touch.pageX, y: touch.pageY };
+                // Scene setup
+                this.scene = new THREE.Scene();
                 
-                if (appMode === 'non-ar') {
-                    // Split screen control: left side rotates A, right side rotates B
-                    if (touch.pageX < window.innerWidth / 2) {
-                        applyRotation(document.getElementById('pivot-a'), dx * rotationSpeed, dy * rotationSpeed);
-                    } else {
-                        applyRotation(document.getElementById('pivot-b'), dx * rotationSpeed, dy * rotationSpeed);
-                    }
-                } else {
-                    // AR Mode: Rotate all currently visible AR pivots
-                    document.querySelectorAll('.ar-planet').forEach(el => {
-                        if (el.parentNode.object3D.visible) applyRotation(el, dx * rotationSpeed, dy * rotationSpeed);
+                // Lighting: Uniform global light source
+                const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+                this.scene.add(ambientLight);
+                const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+                directionalLight.position.set(5, 5, 5);
+                this.scene.add(directionalLight);
+
+                // Camera setup
+                const width = this.container.clientWidth;
+                const height = this.container.clientHeight;
+                this.camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+                
+                // CRITICAL SCALING CONSTRAINT: 
+                // Fix camera distance far enough so Jupiter (radius ~11, diameter 22) fits.
+                // At Z=35 and FOV=45, the frustum height at origin is ~29 units.
+                this.camera.position.z = 35; 
+
+                // Renderer setup
+                this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+                this.renderer.setSize(width, height);
+                this.renderer.setPixelRatio(window.devicePixelRatio);
+                this.container.appendChild(this.renderer.domElement);
+
+                // Handle resize
+                window.addEventListener('resize', () => this.onWindowResize());
+                
+                // Initialize drag-to-rotate interaction
+                this.initInteraction();
+            }
+
+            initInteraction() {
+                let isDragging = false;
+                let previousMousePosition = { x: 0, y: 0 };
+
+                const down = (e) => {
+                    isDragging = true;
+                    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                    previousMousePosition = { x: clientX, y: clientY };
+                };
+
+                const move = (e) => {
+                    if (!isDragging || !this.currentMesh) return;
+                    
+                    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                    
+                    const deltaMove = {
+                        x: clientX - previousMousePosition.x,
+                        y: clientY - previousMousePosition.y
+                    };
+
+                    // Apply rotation directly to the mesh group
+                    this.currentMesh.rotation.y += deltaMove.x * 0.008;
+                    this.currentMesh.rotation.x += deltaMove.y * 0.008;
+
+                    previousMousePosition = { x: clientX, y: clientY };
+                };
+
+                const up = () => {
+                    isDragging = false;
+                };
+
+                this.container.addEventListener('mousedown', down);
+                this.container.addEventListener('mousemove', move);
+                window.addEventListener('mouseup', up); // Catch releases outside the box
+                
+                this.container.addEventListener('touchstart', down);
+                this.container.addEventListener('touchmove', move);
+                window.addEventListener('touchend', up);
+            }
+
+            setZoom(scale) {
+                this.currentZoom = scale;
+                if (this.currentMesh) {
+                    this.currentMesh.scale.set(scale, scale, scale);
+                }
+            }
+
+            onWindowResize() {
+                if(this.container.clientWidth === 0) return; // Hidden
+                const width = this.container.clientWidth;
+                const height = this.container.clientHeight;
+                this.camera.aspect = width / height;
+                this.camera.updateProjectionMatrix();
+                this.renderer.setSize(width, height);
+            }
+
+            renderPlanet(planetIndex) {
+                const data = planetData[planetIndex];
+                
+                // Remove old mesh
+                if (this.currentMesh) {
+                    this.scene.remove(this.currentMesh);
+                    // Dispose geometries/materials to prevent memory leaks
+                    this.currentMesh.traverse(child => {
+                        if (child.isMesh) {
+                            child.geometry.dispose();
+                            child.material.dispose();
+                        }
                     });
                 }
-            } else if (e.touches.length === 2) {
-                let dist = getTouchDistance(e.touches[0], e.touches[1]);
-                let scaleFactor = Math.pow(dist / initialPinchDistance, 1.3); // Accelerate pinch zoom
-                currentScale = Math.max(0.1, Math.min(initialScaleAtPinch * scaleFactor, 25.0)); // Increased maximum zoom level
+
+                // Create and add new mesh (Scale 1:1 with relative radius data)
+                this.currentMesh = createPlanetGroup(data, 1);
                 
-                if (appMode === 'non-ar') {
-                    document.getElementById('planets-wrapper').setAttribute('scale', `${currentScale} ${currentScale} ${currentScale}`);
-                    updatePlanetSeparation();
-                } else {
-                    document.querySelectorAll('.ar-planet').forEach(el => el.setAttribute('scale', `${currentScale} ${currentScale} ${currentScale}`));
+                // Apply current magnification state
+                this.currentMesh.scale.set(this.currentZoom, this.currentZoom, this.currentZoom);
+                
+                // Add slight tilt to the group for better static viewing angle
+                this.currentMesh.rotation.x = 0.2; 
+                this.scene.add(this.currentMesh);
+
+                // Update UI Labels
+                document.getElementById(`name-${this.dataPrefix}`).innerText = data.name;
+                
+                const realRadiusKm = Math.round(data.radius * 6371).toLocaleString();
+                document.getElementById(`desc-${this.dataPrefix}`).innerText = `Est. Radius: ${realRadiusKm} km`;
+                
+                const relativeStr = data.radius === 1 ? "1.00x Earth" : `${data.radius.toFixed(2)}x Earth`;
+                document.getElementById(`metric-${this.dataPrefix}`).innerText = relativeStr;
+
+                // Force render
+                this.renderer.render(this.scene, this.camera);
+            }
+
+            animate() {
+                requestAnimationFrame(() => this.animate());
+                // NO AUTO-ROTATION per constraints. Only render.
+                this.renderer.render(this.scene, this.camera);
+            }
+        }
+
+        // Initialize Non-AR Viewers
+        const viewerLeft = new PlanetViewer('canvas-container-left', 'left');
+        const viewerRight = new PlanetViewer('canvas-container-right', 'right');
+
+        // Populate Dropdowns and setup event listeners
+        const selectLeft = document.getElementById('select-left');
+        const selectRight = document.getElementById('select-right');
+
+        planetData.forEach((p, index) => {
+            const optLeft = document.createElement('option');
+            optLeft.value = index;
+            optLeft.text = p.name;
+            selectLeft.appendChild(optLeft);
+
+            const optRight = document.createElement('option');
+            optRight.value = index;
+            optRight.text = p.name;
+            selectRight.appendChild(optRight);
+        });
+
+        // Default selections (Earth and Jupiter for dramatic contrast)
+        selectLeft.value = 2; // Earth
+        selectRight.value = 4; // Jupiter
+
+        selectLeft.addEventListener('change', (e) => viewerLeft.renderPlanet(e.target.value));
+        selectRight.addEventListener('change', (e) => viewerRight.renderPlanet(e.target.value));
+
+        // Setup Zoom Slider logic
+        const zoomSlider = document.getElementById('zoom-slider');
+        if (zoomSlider) {
+            zoomSlider.addEventListener('input', (e) => {
+                const zoomVal = parseFloat(e.target.value);
+                viewerLeft.setZoom(zoomVal);
+                viewerRight.setZoom(zoomVal);
+            });
+        }
+
+        // Initial Render
+        viewerLeft.renderPlanet(2);
+        viewerRight.renderPlanet(4);
+
+        // Start animation loops
+        viewerLeft.animate();
+        viewerRight.animate();
+
+        // --- Mode B: AR Engine Setup ---
+        
+        let arScene, arCamera, arRenderer, arToolkitSource, arToolkitContext;
+        let arActive = false;
+        let arAnimationId;
+
+        function initializeAR() {
+            if (arActive) return;
+
+            // Ensure THREEx loaded correctly before initializing
+            if (typeof THREEx === 'undefined') {
+                const instructions = document.getElementById('ar-instructions');
+                if (instructions) {
+                    instructions.innerText = "Error: AR.js library failed to load. Please check your network connection or disable script blockers.";
+                    instructions.style.backgroundColor = "rgba(220, 38, 38, 0.9)";
+                }
+                console.error("THREEx is not defined. The AR.js script failed to load.");
+                return;
+            }
+
+            // --- BUG FIX: AR.js + Three.js r128+ EventDispatcher Polyfill ---
+            // Three.js r128+ converted EventDispatcher to an ES6 class. Class methods are non-enumerable, 
+            // causing AR.js's Object.assign() to fail at copying them. We manually map them here.
+            const dispatcherMethods = ['addEventListener', 'hasEventListener', 'removeEventListener', 'dispatchEvent'];
+            dispatcherMethods.forEach(method => {
+                THREEx.ArToolkitContext.prototype[method] = THREE.EventDispatcher.prototype[method];
+                THREEx.ArToolkitSource.prototype[method] = THREE.EventDispatcher.prototype[method];
+                THREEx.ArMarkerControls.prototype[method] = THREE.EventDispatcher.prototype[method];
+            });
+            // ----------------------------------------------------------------
+
+            // 1. Setup basic Three.js scene
+            arScene = new THREE.Scene();
+            
+            // Uniform lighting
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+            arScene.add(ambientLight);
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(5, 10, 5);
+            arScene.add(directionalLight);
+
+            arCamera = new THREE.Camera();
+            arScene.add(arCamera);
+
+            arRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            arRenderer.setSize(window.innerWidth, window.innerHeight);
+            arRenderer.domElement.style.position = 'absolute';
+            arRenderer.domElement.style.top = '0px';
+            arRenderer.domElement.style.left = '0px';
+            document.getElementById('ar-mode').appendChild(arRenderer.domElement);
+
+            // 2. Setup ARToolkit Source (Webcam)
+            arToolkitSource = new THREEx.ArToolkitSource({ sourceType: 'webcam' });
+
+            arToolkitSource.init(function onReady() {
+                onResizeAR();
+            });
+
+            // Handle window resize for AR camera stream
+            window.addEventListener('resize', onResizeAR);
+            function onResizeAR() {
+                if(arActive) {
+                    arToolkitSource.onResizeElement();
+                    arToolkitSource.copyElementSizeTo(arRenderer.domElement);
+                    if(arToolkitContext && arToolkitContext.arController !== null) {
+                        arToolkitSource.copyElementSizeTo(arToolkitContext.arController.canvas);
+                    }
                 }
             }
-        }, {passive: false});
 
-        document.addEventListener('touchend', (e) => {
-            if(e.touches.length < 2) initialPinchDistance = null;
-            if(e.touches.length === 0) isDragging = false;
-        });
+            // 3. Setup ARToolkit Context (Tracking Engine)
+            // Configured for matrix/barcode tracking as requested
+            arToolkitContext = new THREEx.ArToolkitContext({
+                cameraParametersUrl: 'https://cdn.jsdelivr.net/npm/@ar-js-org/ar.js@3.3.2/data/data/camera_para.dat',
+                detectionMode: 'mono_and_matrix',
+                matrixCodeType: '3x3'
+            });
 
-        // --- Mouse Event Listeners (Desktop support) ---
-        let isMouseDown = false;
-        document.addEventListener('mousedown', (e) => {
-            if(e.target.closest('.interactive') || e.target.closest('#marker-modal')) return;
-            isMouseDown = true;
-            previousCursor = { x: e.pageX, y: e.pageY };
-        });
-        
-        document.addEventListener('mousemove', (e) => {
-            if(!isMouseDown || e.target.closest('.interactive') || e.target.closest('#marker-modal')) return;
-            e.preventDefault();
-            
-            let dx = e.pageX - previousCursor.x;
-            let dy = e.pageY - previousCursor.y;
-            previousCursor = { x: e.pageX, y: e.pageY };
-            const rotationSpeed = 0.4;
-            
-            if (appMode === 'non-ar') {
-                if (e.pageX < window.innerWidth / 2) {
-                    applyRotation(document.getElementById('pivot-a'), dx * rotationSpeed, dy * rotationSpeed);
-                } else {
-                    applyRotation(document.getElementById('pivot-b'), dx * rotationSpeed, dy * rotationSpeed);
-                }
-            } else {
-                document.querySelectorAll('.ar-planet').forEach(el => {
-                    if (el.parentNode.object3D.visible) applyRotation(el, dx * rotationSpeed, dy * rotationSpeed);
+            arToolkitContext.init(function onCompleted() {
+                arCamera.projectionMatrix.copy(arToolkitContext.getProjectionMatrix());
+            });
+
+            // 4. Setup Markers and Planet Meshes
+            planetData.forEach(data => {
+                const markerRoot = new THREE.Group();
+                arScene.add(markerRoot);
+
+                // Map the 8 planets to barcode markers 0 through 7
+                new THREEx.ArMarkerControls(arToolkitContext, markerRoot, {
+                    type: 'barcode',
+                    barcodeValue: data.id
                 });
+
+                // Calculate scale. 
+                // A standard marker is 1 unit in AR space.
+                // If Earth (radius 1) uses multiplier 0.5, its diameter is 1 unit (fits perfectly over marker).
+                // Jupiter (radius 10.97) will have diameter ~11 units in AR space.
+                const arScaleMultiplier = 0.5;
+                const meshGroup = createPlanetGroup(data, arScaleMultiplier);
+                
+                // Lift mesh slightly so it sits "on" the marker rather than intersecting it
+                meshGroup.position.y = data.radius * arScaleMultiplier;
+                
+                markerRoot.add(meshGroup);
+            });
+
+            // 5. AR Animation Loop
+            arActive = true;
+            
+            function animateAR() {
+                if (!arActive) return;
+                arAnimationId = requestAnimationFrame(animateAR);
+
+                if (arToolkitSource.ready !== false) {
+                    arToolkitContext.update(arToolkitSource.domElement);
+                }
+                
+                // NO AUTO-ROTATION per constraints
+                arRenderer.render(arScene, arCamera);
             }
-        });
-        
-        document.addEventListener('mouseup', () => isMouseDown = false);
-        
-        document.addEventListener('wheel', (e) => {
-            if(e.target.closest('.interactive') || e.target.closest('#marker-modal')) return;
-            
-            let scaleFactor = e.deltaY > 0 ? 0.8 : 1.25; // Scroll down zooms out, up zooms in (Increased speed)
-            currentScale = Math.max(0.1, Math.min(currentScale * scaleFactor, 25.0)); // Increased maximum zoom level
-            
-            if (appMode === 'non-ar') {
-                document.getElementById('planets-wrapper').setAttribute('scale', `${currentScale} ${currentScale} ${currentScale}`);
-                updatePlanetSeparation();
+            animateAR();
+        }
+
+        // Cleanly mounts and unmounts components based on selected mode
+        function destroyAR() {
+            if (!arActive) return;
+            arActive = false;
+            cancelAnimationFrame(arAnimationId);
+
+            // 1. Stop video stream to turn off webcam light
+            if (arToolkitSource && arToolkitSource.domElement) {
+                const stream = arToolkitSource.domElement.srcObject;
+                if (stream) {
+                    stream.getTracks().forEach(track => track.stop());
+                }
+            }
+
+            // 2. Remove video elements injected by AR.js into the body
+            const videos = document.querySelectorAll('video');
+            videos.forEach(v => v.remove());
+
+            // 3. Clear AR canvas
+            const arContainer = document.getElementById('ar-mode');
+            const arInstructions = document.getElementById('ar-instructions');
+            arContainer.innerHTML = ''; 
+            arContainer.appendChild(arInstructions); // Keep instructions for next time
+
+            // 4. Reset references to allow clean garbage collection
+            arScene = null;
+            arCamera = null;
+            arRenderer = null;
+            arToolkitSource = null;
+            arToolkitContext = null;
+        }
+
+        // --- UI/UX Toggle Controls ---
+        const btnToggle = document.getElementById('mode-toggle');
+        const viewNonAr = document.getElementById('non-ar-mode');
+        const viewAr = document.getElementById('ar-mode');
+
+        btnToggle.addEventListener('click', () => {
+            if (viewAr.style.display === 'block') {
+                // Switching to Non-AR Mode
+                destroyAR();
+                viewAr.style.display = 'none';
+                viewNonAr.style.display = 'flex';
+                document.body.classList.remove('ar-active');
+                btnToggle.innerText = 'Enter AR Mode';
+                
+                // Trigger resize to fix any layout issues after returning from fixed AR view
+                window.dispatchEvent(new Event('resize'));
             } else {
-                document.querySelectorAll('.ar-planet').forEach(el => el.setAttribute('scale', `${currentScale} ${currentScale} ${currentScale}`));
+                // Switching to AR Mode
+                viewNonAr.style.display = 'none';
+                viewAr.style.display = 'block';
+                document.body.classList.add('ar-active');
+                btnToggle.innerText = 'Exit AR Mode';
+                initializeAR();
             }
         });
+
     </script>
 </body>
 </html>
